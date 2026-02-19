@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>天父的話 365</title>
+    <!-- Google Fonts as enhancement; robust local fallbacks ensure rendering even when blocked -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@300;400;600&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <style>
+        :root {
+            --gold: #c9a96e;
+            --gold-light: #e8d5aa;
+            --gold-dim: rgba(201,169,110,0.25);
+            --deep: #0c061e;
+            --ink: rgba(240,232,213,0.92);
+            --muted: rgba(240,232,213,0.55);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Font stacks — Google Fonts load async; these ensure beautiful rendering offline too */
+        :root {
+            --font-body:    'Noto Serif TC', 'Songti TC', 'STSong', '宋體', 'SimSun', Georgia, serif;
+            --font-display: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', '楷體', 'BiauKai', '標楷體', cursive;
+            --font-verse:   'ZCOOL XiaoWei', 'STSong', 'Songti TC', '宋體-繁', 'SimSun', Georgia, serif;
+        }
+        body {
+            font-family: var(--font-body);
+            background: var(--deep);
+            min-height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+
+        /* ── Stars ── */
+        #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .star {
+            position: absolute; border-radius: 50%; background: #fff;
+            animation: twinkle var(--d) ease-in-out infinite alternate;
+            animation-delay: var(--delay);
+        }
+        @keyframes twinkle {
+            from { opacity: var(--lo); }
+            to   { opacity: var(--hi); }
+        }
+
+        /* ── Aurora ── */
+        .aurora {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 90% 50% at 15% 85%, rgba(80,40,130,0.4) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 60% at 85% 15%, rgba(40,70,140,0.35) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 50% 40%, rgba(30,10,60,0.7) 0%, transparent 70%);
+            animation: auroraShift 14s ease-in-out infinite alternate;
+        }
+        @keyframes auroraShift {
+            0%   { filter: hue-rotate(0deg) brightness(1); }
+            100% { filter: hue-rotate(25deg) brightness(1.15); }
+        }
+
+        /* ── Gold beam ── */
+        .beam {
+            position: fixed; top: -5vh; left: 50%; transform: translateX(-50%);
+            width: 1px; height: 60vh;
+            background: linear-gradient(to bottom, rgba(201,169,110,0.7), transparent);
+            z-index: 0; pointer-events: none;
+            animation: beamPulse 5s ease-in-out infinite alternate;
+        }
+        .beam::before {
+            content: '';
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(201,169,110,0.13) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        @keyframes beamPulse {
+            from { opacity: 0.3; } to { opacity: 0.7; }
+        }
+
+        /* ══════════════════════════════
+           SCREEN SYSTEM
+        ══════════════════════════════ */
+        .screen {
+            display: none;
+            position: fixed; inset: 0; z-index: 20;
+            align-items: center; justify-content: center;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        .screen.active {
+            display: flex;
+        }
+        .screen.visible {
+            opacity: 1;
+        }
+
+        /* ══════════════════════════════
+           SCREEN 1 — PRAYER / ONBOARDING
+        ══════════════════════════════ */
+        #prayerScreen {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+            text-align: center;
+        }
+
+        .cross-glow {
+            font-size: 52px;
+            color: var(--gold);
+            filter: drop-shadow(0 0 24px rgba(201,169,110,0.5));
+            margin-bottom: 28px;
+            animation: crossPulse 3s ease-in-out infinite alternate;
+        }
+        @keyframes crossPulse {
+            from { filter: drop-shadow(0 0 16px rgba(201,169,110,0.35)); }
+            to   { filter: drop-shadow(0 0 36px rgba(201,169,110,0.7)); }
+        }
+
+        .prayer-title {
+            font-family: var(--font-display);
+            font-size: clamp(30px, 8vw, 42px);
+            color: var(--gold-light);
+            letter-spacing: 0.12em;
+            margin-bottom: 10px;
+            animation: fadeUp 1s ease both;
+        }
+        .prayer-sub {
+            font-size: 13px; color: var(--muted);
+            letter-spacing: 0.1em; line-height: 1.9;
+            margin-bottom: 36px;
+            animation: fadeUp 1.2s ease both;
+        }
+
+        /* Prayer card */
+        .prayer-card {
+            width: min(92vw, 400px);
+            background: linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(201,169,110,0.2);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 60px rgba(70,40,120,0.3), inset 0 1px 0 rgba(201,169,110,0.12);
+            padding: 28px 26px 24px;
+            animation: fadeUp 1.4s ease both;
+            text-align: left;
+        }
+        .prayer-quote {
+            font-family: var(--font-verse);
+            font-size: clamp(15px, 3.8vw, 17px);
+            color: var(--ink);
+            line-height: 2.1;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .prayer-ref {
+            font-size: 11px; color: var(--gold);
+            letter-spacing: 0.15em; text-align: center;
+            opacity: 0.7; margin-bottom: 24px;
+        }
+
+        .divider-sm {
+            width: 100%; height: 1px; margin: 0 0 22px;
+            background: linear-gradient(to right, transparent, rgba(201,169,110,0.25), transparent);
+        }
+
+        .onboard-title {
+            font-size: 12px; color: var(--gold);
+            letter-spacing: 0.18em; margin-bottom: 12px;
+            opacity: 0.8;
+        }
+        .onboard-steps {
+            display: flex; flex-direction: column; gap: 10px;
+            margin-bottom: 20px;
+        }
+        .step {
+            display: flex; align-items: flex-start; gap: 10px;
+        }
+        .step-num {
+            width: 22px; height: 22px; flex-shrink: 0;
+            border-radius: 50%;
+            border: 1px solid rgba(201,169,110,0.4);
+            color: var(--gold); font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+            margin-top: 1px;
+        }
+        .step-text {
+            font-size: 12px; color: var(--muted); line-height: 1.8; letter-spacing: 0.03em;
+        }
+        .step-text a {
+            color: var(--gold-light); text-decoration: underline;
+            text-underline-offset: 3px; opacity: 0.85;
+        }
+        .step-text a:hover { opacity: 1; }
+
+        /* Key input in onboarding */
+        .key-row {
+            display: flex; gap: 8px; margin-top: 4px;
+        }
+        .key-input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(201,169,110,0.22);
+            border-radius: 10px; color: var(--gold-light);
+            font-size: 11px; padding: 9px 12px;
+            font-family: monospace; letter-spacing: 0.06em;
+            outline: none; transition: border-color 0.2s;
+        }
+        .key-input::placeholder { color: rgba(232,213,170,0.3); }
+        .key-input:focus { border-color: rgba(201,169,110,0.6); }
+
+        .btn-enter {
+            padding: 9px 18px; border-radius: 10px;
+            border: 1px solid rgba(201,169,110,0.35);
+            background: rgba(201,169,110,0.14);
+            color: var(--gold-light); font-size: 11px;
+            cursor: pointer; font-family: var(--font-body);
+            letter-spacing: 0.1em; white-space: nowrap;
+
+        .skip-link {
+            display: block; text-align: center; margin-top: 16px;
+            font-size: 11px; color: var(--muted); letter-spacing: 0.08em;
+            cursor: pointer; opacity: 0.6; transition: opacity 0.2s;
+            text-decoration: underline; text-underline-offset: 3px;
+        }
+        .skip-link:hover { opacity: 1; }
+
+        /* ══════════════════════════════
+           SCREEN 2 — MAIN APP
+        ══════════════════════════════ */
+        #mainScreen { padding: 0; }
+
+        .card {
+            position: relative; z-index: 10;
+            width: min(94vw, 430px);
+            max-height: 97dvh;
+            overflow-y: auto; scrollbar-width: none;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 22px 22px 18px;
+            background: linear-gradient(160deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(201,169,110,0.18);
+            border-radius: 26px;
+            backdrop-filter: blur(22px);
+            box-shadow: 0 0 80px rgba(70,40,120,0.35), inset 0 1px 0 rgba(201,169,110,0.12);
+        }
+        .card::-webkit-scrollbar { display: none; }
+
+        /* Top row */
+        .top-row {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; margin-bottom: 16px;
+        }
+        .date-tag {
+            font-size: 11px; letter-spacing: 0.13em;
+            color: var(--gold-light); opacity: 0.6; font-weight: 300;
+        }
+        .top-right { display: flex; align-items: center; gap: 8px; }
+        .mode-pills { display: flex; gap: 5px; }
+        .pill {
+            padding: 3px 11px; border-radius: 20px;
+            border: 1px solid rgba(201,169,110,0.22);
+            background: transparent; color: var(--gold-light);
+            font-size: 10px; letter-spacing: 0.1em;
+            cursor: pointer; font-family: var(--font-body);
+            transition: all 0.2s; opacity: 0.5;
+        }
+        .pill.active { background: rgba(201,169,110,0.2); border-color: var(--gold); opacity: 1; }
+        .pill:hover { opacity: 0.85; }
+
+        /* Settings icon */
+        .icon-btn {
+            width: 26px; height: 26px; border-radius: 50%;
+            border: 1px solid rgba(201,169,110,0.22);
+            background: transparent; color: var(--gold);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; opacity: 0.55; transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .icon-btn:hover { opacity: 1; border-color: var(--gold); background: rgba(201,169,110,0.1); }
+        .icon-btn svg { width: 13px; height: 13px; }
+
+        /* Filter panel */
+        .filter-panel {
+            width: 100%; overflow: hidden;
+            max-height: 0; opacity: 0;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, margin 0.3s;
+            margin-bottom: 0;
+        }
+        .filter-panel.open { max-height: 220px; opacity: 1; margin-bottom: 14px; }
+        .filter-inner {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(201,169,110,0.12);
+            border-radius: 16px; padding: 13px 15px;
+            display: flex; flex-direction: column; gap: 11px;
+        }
+        .filter-row { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label { font-size: 10px; letter-spacing: 0.15em; color: var(--gold); opacity: 0.65; }
+        .chip-group { display: flex; flex-wrap: wrap; gap: 5px; }
+        .chip {
+            padding: 3px 10px; border-radius: 20px;
+            border: 1px solid rgba(201,169,110,0.18);
+            background: transparent; color: var(--muted);
+            font-size: 10px; cursor: pointer;
+            font-family: var(--font-body);
+            transition: all 0.18s; white-space: nowrap; border-color: var(--gold); color: var(--gold-light); }
+        .chip:hover { border-color: rgba(201,169,110,0.4); color: var(--gold-light); }
+
+        /* Key settings panel */
+        .key-panel {
+            width: 100%; overflow: hidden;
+            max-height: 0; opacity: 0;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, margin 0.3s;
+            margin-bottom: 0;
+        }
+        .key-panel.open { max-height: 80px; opacity: 1; margin-bottom: 14px; }
+        .key-panel-inner {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(201,169,110,0.12);
+            border-radius: 16px; padding: 12px 14px;
+        }
+        .key-panel-label { font-size: 10px; color: var(--gold); letter-spacing: 0.12em; opacity: 0.65; margin-bottom: 7px; }
+
+        .ornament {
+            color: var(--gold); opacity: 0.4;
+            font-size: 15px; letter-spacing: 7px; margin-bottom: 13px;
+        }
+
+        /* Scripture */
+        .scripture-wrap { position: relative; text-align: center; padding: 0 8px; margin-bottom: 13px; }
+        .big-quote {
+            font-family: var(--font-display);
+            font-size: 76px; color: var(--gold); opacity: 0.1;
+            position: absolute; top: -28px; left: -4px;
+            line-height: 1; pointer-events: none; user-select: none;
+        }
+        .scripture-text {
+            font-family: var(--font-verse);
+            font-size: clamp(15px, 4vw, 19px);
+            color: var(--ink); line-height: 2.1; letter-spacing: 0.05em;
+            position: relative; z-index: 1;
+            transition: opacity 0.4s ease; min-height: 64px;
+        }
+        .scripture-ref {
+            font-size: 11px; color: var(--gold);
+            letter-spacing: 0.18em; margin-top: 8px;
+            opacity: 0.7; font-weight: 300;
+        }
+
+        .divider {
+            width: 100%; height: 1px; margin: 11px 0;
+            background: linear-gradient(to right, transparent, rgba(201,169,110,0.28), transparent);
+        }
+
+        .msg-label { font-size: 10px; letter-spacing: 0.2em; color: var(--gold); opacity: 0.6; text-align: center; margin-bottom: 8px; }
+        .message-text {
+            font-size: clamp(11.5px, 2.9vw, 13px); color: var(--muted);
+            line-height: 2.05; text-align: justify; letter-spacing: 0.03em;
+            transition: opacity 0.4s ease; min-height: 52px;
+        }
+
+        .btn-row { display: flex; gap: 8px; margin-top: 16px; width: 100%; }
+        .btn {
+            flex: 1; padding: 10px 0; border-radius: 50px;
+            border: 1px solid rgba(201,169,110,0.28);
+            background: rgba(201,169,110,0.07);
+            color: var(--gold-light); font-family: var(--font-body);
+            font-size: 11px; letter-spacing: 0.12em;
+            cursor: pointer; transition: all 0.25s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .btn:hover { background: rgba(201,169,110,0.16); border-color: var(--gold); box-shadow: 0 0 18px rgba(201,169,110,0.1); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.38; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+            padding: 9px 20px; border-radius: 12px;
+            font-size: 12px; letter-spacing: 0.05em; backdrop-filter: blur(10px);
+            z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+        }
+        .toast.err { background: rgba(150,40,40,0.88); color: #fff; }
+        .toast.ok  { background: rgba(40,110,70,0.88); color: #fff; }
+        .toast.show { opacity: 1; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinning { animation: spin 0.8s linear infinite; }
+        .fade-out { opacity: 0 !important; }
+    </style>
+</head>
+<body>
+<div id="stars"></div>
+<div class="aurora"></div>
+<div class="beam"></div>
+
+<!-- ══════════════════════════════
+     SCREEN 1 — PRAYER / ONBOARDING
+══════════════════════════════ -->
+<div class="screen active" id="prayerScreen">
+    <div style="display:flex;flex-direction:column;align-items:center;width:100%;padding:24px 16px;max-height:100dvh;overflow-y:auto;scrollbar-width:none;">
+
+        <div class="cross-glow">✝</div>
+        <h1 class="prayer-title">天父的話 365</h1>
+        <p class="prayer-sub">每一天，讓天父親自對你說話</p>
+
+        <div class="prayer-card">
+            <!-- Opening verse -->
+            <p class="prayer-quote">「你們祈求，就給你們；<br>尋找，就尋見；叩門，就給你們開門。」</p>
+            <p class="prayer-ref">— 馬太福音 7:7 —</p>
+
+            <div class="divider-sm"></div>
+
+            <!-- Onboarding guide -->
+            <p class="onboard-title">✦ 三步開始靈修之旅 ✦</p>
+            <div class="onboard-steps">
+                <div class="step">
+                    <span class="step-num">1</span>
+                    <span class="step-text">
+                        前往 <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>，免費註冊帳號（只需 Email）
+                    </span>
+                </div>
+                <div class="step">
+                    <span class="step-num">2</span>
+                    <span class="step-text">
+                        點擊「<strong style="color:var(--gold-light);font-weight:400">Create API Key</strong>」，複製你的 Groq API Key（以 gsk_ 開頭）
+                    </span>
+                </div>
+                <div class="step">
+                    <span class="step-num">3</span>
+                    <span class="step-text">將金鑰貼入下方，天父的話將由 Groq AI 每日親自為你生成</span>
+                </div>
+            </div>
+
+            <!-- Key input -->
+            <div class="key-row">
+                <input class="key-input" id="onboardKeyInput" type="password"
+                    placeholder="gsk_Sy…"
+                    autocomplete="off" spellcheck="false"
+                    onkeydown="if(event.key==='Enter')enterApp()">
+                <button class="btn-enter" onclick="enterApp()">進入 →</button>
+            </div>
+
+            <span class="skip-link" onclick="skipOnboard()">暫時略過，先看看</span>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCREEN 2 — MAIN APP
+══════════════════════════════ -->
+<div class="screen" id="mainScreen">
+    <div class="card">
+
+        <!-- Top row -->
+        <div class="top-row">
+            <span class="date-tag" id="dateTag">—</span>
+            <div class="top-right">
+                <div class="mode-pills">
+                    <button class="pill active" id="pillDaily"  onclick="setMode('daily')">每日</button>
+                    <button class="pill"        id="pillDemand" onclick="setMode('demand')">隨選</button>
+                </div>
+                <button class="icon-btn" onclick="toggleKeyPanel()" title="API Key 設定">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Key settings panel -->
+        <div class="key-panel" id="keyPanel">
+            <div class="key-panel-inner">
+                <p class="key-panel-label">✦ Groq API Key</p>
+                <div class="key-row">
+                    <input class="key-input" id="mainKeyInput" type="password"
+                        placeholder="gsk_Sy…"
+                        autocomplete="off" spellcheck="false"
+                        onkeydown="if(event.key==='Enter')updateKey()">
+                    <button class="btn-enter" onclick="updateKey()">更新</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter panel -->
+        <div class="filter-panel" id="filterPanel">
+            <div class="filter-inner">
+                <div class="filter-row">
+                    <span class="filter-label">✦ 主題</span>
+                    <div class="chip-group" id="themeChips"></div>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">✦ 書卷</span>
+                    <div class="chip-group" id="bookChips"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ornament">✦ ✝ ✦</div>
+
+        <div class="scripture-wrap">
+            <span class="big-quote">「</span>
+            <p class="scripture-text" id="scriptureText">正在與天父連線…</p>
+            <p class="scripture-ref"  id="scriptureRef">— 載入中 —</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <p class="msg-label">✦ 天父的話 ✦</p>
+        <p class="message-text" id="messageText">天父正在對你說話，請稍候…</p>
+
+        <div class="btn-row">
+            <button class="btn" id="refreshBtn" onclick="fetchVerse()">
+                <svg id="refreshIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                換一句話
+            </button>
+            <button class="btn" onclick="shareVerse()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                </svg>
+                分享
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════
+const GROQ_API   = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+const THEMES = ['隨機','平安','信心','愛','盼望','力量','感恩','智慧','喜樂','饒恕'];
+const BOOKS  = [
+    { label:'隨機',     value:null },
+    { label:'創世記',   value:'genesis' },
+    { label:'詩篇',     value:'psalms' },
+    { label:'箴言',     value:'proverbs' },
+    { label:'以賽亞書', value:'isaiah' },
+    { label:'耶利米書', value:'jeremiah' },
+    { label:'馬太福音', value:'matthew' },
+    { label:'約翰福音', value:'john' },
+    { label:'羅馬書',   value:'romans' },
+    { label:'腓立比書', value:'philippians' },
+];
+const BOOK_ZH = {
+    genesis:'創世記', psalms:'詩篇', proverbs:'箴言',
+    isaiah:'以賽亞書', jeremiah:'耶利米書',
+    matthew:'馬太福音', john:'約翰福音',
+    romans:'羅馬書', philippians:'腓立比書',
+};
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let groqKey = localStorage.getItem('groq_key') || '';
+let mode     = 'daily';
+let selTheme = '';
+let selBook  = null;
+let current  = null;
+let loading  = false;
+let keyPanelOpen = false;
+
+// ═══════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    buildStars();
+    buildFilters();
+    setDate();
+
+    if (groqKey) {
+        showScreen('mainScreen');
+        fetchVerse();
+    } else {
+        showScreen('prayerScreen');
+    }
+});
+
+// ═══════════════════════════════════════
+//  SCREEN TRANSITIONS
+// ═══════════════════════════════════════
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => {
+        s.classList.remove('active', 'visible');
+    });
+    const el = document.getElementById(id);
+    el.classList.add('active');
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible')));
+}
+
+function showMain(withFetch = true) {
+    showScreen('mainScreen');
+    if (withFetch) fetchVerse();
+}
+
+function enterApp() {
+    const val = document.getElementById('onboardKeyInput').value.trim();
+    if (val && !val.startsWith('gsk_')) {
+        showToast('Groq Key 格式應以 gsk_ 開頭', 'err'); return;
+    }
+    if (val) {
+        groqKey = val;
+        localStorage.setItem('groq_key', val);
+    }
+    showMain(true);
+}
+
+function skipOnboard() {
+    showMain(true);
+}
+
+// ═══════════════════════════════════════
+//  KEY PANEL (in main)
+// ═══════════════════════════════════════
+function toggleKeyPanel() {
+    keyPanelOpen = !keyPanelOpen;
+    document.getElementById('keyPanel').classList.toggle('open', keyPanelOpen);
+    if (keyPanelOpen && groqKey) {
+        document.getElementById('mainKeyInput').value = groqKey;
+    }
+}
+function updateKey() {
+    const val = document.getElementById('mainKeyInput').value.trim();
+    if (!val.startsWith('gsk_')) { showToast('Groq Key 格式應以 gsk_ 開頭', 'err'); return; }
+    groqKey = val;
+    localStorage.setItem('groq_key', val);
+    showToast('API Key 已更新 ✓', 'ok');
+    toggleKeyPanel();
+}
+
+// ═══════════════════════════════════════
+//  DATE
+// ═══════════════════════════════════════
+function setDate() {
+    const n = new Date();
+    document.getElementById('dateTag').textContent =
+        `${n.getFullYear()}.${String(n.getMonth()+1).padStart(2,'0')}.${String(n.getDate()).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════
+//  FILTERS
+// ═══════════════════════════════════════
+function buildFilters() {
+    const tw = document.getElementById('themeChips');
+    THEMES.forEach(t => {
+        const c = mkChip(t, t === '隨機', () => {
+            selTheme = t === '隨機' ? '' : t;
+            tw.querySelectorAll('.chip').forEach(x => x.classList.remove('sel'));
+            c.classList.add('sel');
+        });
+        tw.appendChild(c);
+    });
+
+    const bw = document.getElementById('bookChips');
+    BOOKS.forEach(b => {
+        const c = mkChip(b.label, b.value === null, () => {
+            selBook = b.value;
+            bw.querySelectorAll('.chip').forEach(x => x.classList.remove('sel'));
+            c.classList.add('sel');
+        });
+        bw.appendChild(c);
+    });
+}
+function mkChip(label, active, onClick) {
+    const el = document.createElement('button');
+    el.className = 'chip' + (active ? ' sel' : '');
+    el.textContent = label;
+    el.onclick = onClick;
+    return el;
+}
+
+// ═══════════════════════════════════════
+//  MODE
+// ═══════════════════════════════════════
+function setMode(m) {
+    mode = m;
+    document.getElementById('pillDaily').classList.toggle('active', m === 'daily');
+    document.getElementById('pillDemand').classList.toggle('active', m === 'demand');
+    document.getElementById('filterPanel').classList.toggle('open', m === 'demand');
+    // Reset selections when switching back to daily
+    if (m === 'daily') { selTheme = ''; selBook = null; }
+}
+
+// ═══════════════════════════════════════
+//  GROQ — 一次生成經文 + 天父的話
+// ═══════════════════════════════════════
+async function callGroq(theme, book) {
+    const key = groqKey;
+    if (!key) return null;
+
+    const themeHint = theme ? `主題：「${theme}」` : '';
+    const bookHint  = book  ? `偏好書卷：${BOOK_ZH[book] || book}` : '';
+    const dateHint  = mode === 'daily'
+        ? `今天日期：${new Date().toLocaleDateString('zh-TW')}（請根據日期固定挑選同一節）`
+        : '';
+    const context = [dateHint, themeHint, bookHint].filter(Boolean).join('，') || '隨機挑選';
+
+    const prompt = `你是一個聖經靈修助手，請完成以下任務：
+
+1. 根據條件（${context}）挑選一段合適的聖經經文（繁體中文和合本）
+2. 以慈愛天父的口吻，用第一人稱「我」，寫一段 80～100 字的靈性鼓勵話語
+
+請只輸出以下 JSON 格式，不要任何其他文字：
+{"verse":"經文內容","reference":"書卷名 章:節","message":"天父的話"}`;
+
+    const res = await fetch(GROQ_API, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+            model: GROQ_MODEL,
+            max_tokens: 512,
+            temperature: 0.88,
+            response_format: { type: 'json_object' },
+            messages: [
+                { role: 'system', content: '你是聖經靈修助手，只輸出 JSON，不加任何說明或 markdown。' },
+                { role: 'user',   content: prompt },
+            ],
+        }),
+    });
+
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Groq ${res.status}: ${err}`);
+    }
+
+    const data = await res.json();
+    const raw  = data.choices?.[0]?.message?.content || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+}
+
+// ═══════════════════════════════════════
+//  MAIN FETCH
+// ═══════════════════════════════════════
+async function fetchVerse() {
+    if (loading) return;
+    loading = true; setLoadingUI(true);
+    try {
+        const result = await callGroq(selTheme, selBook);
+        if (!result) throw new Error('no-key');
+        current = { text: result.verse, reference: result.reference, message: result.message };
+        render(current);
+    } catch (err) {
+        console.error('[天父的話]', err);
+        const msg = err.message || '';
+        let toast;
+        if (msg === 'no-key')
+            toast = '請先輸入 Groq API Key';
+        else if (msg.includes('400') || msg.includes('401') || msg.includes('403'))
+            toast = 'API Key 無效，請點右上角⚙️更新';
+        else if (msg.includes('429'))
+            toast = '請求太頻繁，請稍後再試 🙏';
+        else
+            toast = '連線失敗，請確認網路後重試 🙏';
+        showToast(toast, 'err');
+        if (!current) {
+            render({
+                text: '你不要害怕，因為我與你同在；不要驚惶，因為我是你的神。',
+                reference: '以賽亞書 41:10',
+                message: '親愛的孩子，這節經文是我今天特別為你預備的。不管你正在經歷什麼，請記得我的眼目從未離開你，我的愛永遠不會改變。',
+            });
+        }
+    } finally {
+        loading = false; setLoadingUI(false);
+    }
+}
+
+// ═══════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════
+function render({ text, reference, message }) {
+    const st = document.getElementById('scriptureText');
+    const mt = document.getElementById('messageText');
+    st.classList.add('fade-out'); mt.classList.add('fade-out');
+    setTimeout(() => {
+        st.textContent = text;
+        document.getElementById('scriptureRef').textContent = `— ${reference} —`;
+        mt.textContent = message;
+        st.classList.remove('fade-out'); mt.classList.remove('fade-out');
+    }, 380);
+}
+
+function setLoadingUI(on) {
+    document.getElementById('refreshBtn').disabled = on;
+    document.getElementById('refreshIcon').classList.toggle('spinning', on);
+    if (on) {
+        document.getElementById('scriptureText').classList.add('fade-out');
+        document.getElementById('messageText').classList.add('fade-out');
+    }
+}
+
+// ═══════════════════════════════════════
+//  SHARE
+// ═══════════════════════════════════════
+function shareVerse() {
+    if (!current) return;
+    const txt = `「${current.text}」\n— ${current.reference} —\n\n天父的話 365`;
+    if (navigator.share) navigator.share({ text: txt });
+    else navigator.clipboard?.writeText(txt).then(() => showToast('已複製到剪貼簿 ✓', 'ok'));
+}
+
+// ═══════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════
+let toastTimer;
+function showToast(msg, type = 'err') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ═══════════════════════════════════════
+//  STARS
+// ═══════════════════════════════════════
+function buildStars() {
+    const wrap = document.getElementById('stars');
+    for (let i = 0; i < 90; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        const sz = Math.random() * 1.8 + 0.4;
+        s.style.cssText = `
+            width:${sz}px;height:${sz}px;
+            top:${Math.random()*100}%;left:${Math.random()*100}%;
+            --d:${(Math.random()*5+2).toFixed(1)}s;
+            --delay:-${(Math.random()*6).toFixed(1)}s;
+            --lo:${(Math.random()*0.12+0.03).toFixed(2)};
+            --hi:${(Math.random()*0.5+0.25).toFixed(2)};
+        `;
+        wrap.appendChild(s);
+    }
+}
+</script>
+</body>
+</html>
