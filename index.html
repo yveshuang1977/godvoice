@@ -305,6 +305,35 @@
             transition: all 0.18s; white-space: nowrap; border-color: var(--gold); color: var(--gold-light); }
         .chip:hover { border-color: rgba(201,169,110,0.4); color: var(--gold-light); }
 
+        /* Mood input */
+        .mood-panel {
+            width: 100%; overflow: hidden;
+            max-height: 0; opacity: 0;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, margin 0.3s;
+            margin-bottom: 0;
+        }
+        .mood-panel.open { max-height: 160px; opacity: 1; margin-bottom: 14px; }
+        .mood-inner {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(201,169,110,0.12);
+            border-radius: 16px; padding: 13px 15px;
+        }
+        .mood-label { font-size: 10px; color: var(--gold); letter-spacing: 0.15em; opacity: 0.65; margin-bottom: 8px; }
+        .mood-row { display: flex; gap: 8px; }
+        .mood-input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(201,169,110,0.22);
+            border-radius: 10px; color: var(--ink);
+            font-size: 12px; padding: 9px 12px;
+            font-family: var(--font-body); letter-spacing: 0.04em;
+            outline: none; transition: border-color 0.2s;
+            resize: none;
+        }
+        .mood-input::placeholder { color: rgba(240,232,213,0.25); }
+        .mood-input:focus { border-color: rgba(201,169,110,0.6); }
+        .mood-hint { font-size: 10px; color: var(--muted); opacity: 0.5; margin-top: 6px; letter-spacing: 0.04em; }
+
         /* Key settings panel */
         .key-panel {
             width: 100%; overflow: hidden;
@@ -463,6 +492,7 @@
                 <div class="mode-pills">
                     <button class="pill active" id="pillDaily"  onclick="setMode('daily')">每日</button>
                     <button class="pill"        id="pillDemand" onclick="setMode('demand')">隨選</button>
+                    <button class="pill"        id="pillMood"   onclick="setMode('mood')">心情</button>
                 </div>
                 <button class="icon-btn" onclick="toggleKeyPanel()" title="API Key 設定">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -499,6 +529,19 @@
                     <span class="filter-label">✦ 書卷</span>
                     <div class="chip-group" id="bookChips"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Mood panel -->
+        <div class="mood-panel" id="moodPanel">
+            <div class="mood-inner">
+                <p class="mood-label">✦ 今天的心情</p>
+                <div class="mood-row">
+                    <textarea class="mood-input" id="moodInput" rows="2"
+                        placeholder="告訴天父你現在的感受…例如：我今天很焦慮，工作壓力很大"
+                        maxlength="100"></textarea>
+                </div>
+                <p class="mood-hint">天父會根據你的心情，為你尋找最合適的話語</p>
             </div>
         </div>
 
@@ -691,7 +734,9 @@ function setMode(m) {
     mode = m;
     document.getElementById('pillDaily').classList.toggle('active', m === 'daily');
     document.getElementById('pillDemand').classList.toggle('active', m === 'demand');
+    document.getElementById('pillMood').classList.toggle('active', m === 'mood');
     document.getElementById('filterPanel').classList.toggle('open', m === 'demand');
+    document.getElementById('moodPanel').classList.toggle('open', m === 'mood');
     // Reset selections when switching back to daily
     if (m === 'daily') { selTheme = ''; selBook = null; }
 }
@@ -703,20 +748,36 @@ async function callGroq(theme, book) {
     const key = groqKey;
     if (!key) return null;
 
-    const themeHint = theme ? `主題：「${theme}」` : '';
-    const bookHint  = book  ? `偏好書卷：${BOOK_ZH[book] || book}` : '';
-    const dateHint  = mode === 'daily'
-        ? `今天日期：${new Date().toLocaleDateString('zh-TW')}（請根據日期固定挑選同一節）`
-        : '';
-    const context = [dateHint, themeHint, bookHint].filter(Boolean).join('，') || '隨機挑選';
+    let prompt;
 
-    const prompt = `你是一個聖經靈修助手，請完成以下任務：
+    if (mode === 'mood') {
+        const mood = document.getElementById('moodInput').value.trim();
+        const moodHint = mood || '沒有特別說明心情';
+        prompt = `你是一個聖經靈修助手，請完成以下任務：
+
+使用者的心情是：「${moodHint}」
+
+1. 根據使用者的心情，挑選一段最能安慰、鼓勵或引導他的聖經經文（繁體中文和合本）
+2. 以慈愛天父的口吻，用第一人稱「我」，針對使用者的心情，寫一段 80～100 字的靈性鼓勵話語
+
+請只輸出以下 JSON 格式，不要任何其他文字：
+{"verse":"經文內容","reference":"書卷名 章:節","message":"天父的話"}`;
+    } else {
+        const themeHint = theme ? `主題：「${theme}」` : '';
+        const bookHint  = book  ? `偏好書卷：${BOOK_ZH[book] || book}` : '';
+        const dateHint  = mode === 'daily'
+            ? `今天日期：${new Date().toLocaleDateString('zh-TW')}（請根據日期固定挑選同一節）`
+            : '';
+        const context = [dateHint, themeHint, bookHint].filter(Boolean).join('，') || '隨機挑選';
+
+        prompt = `你是一個聖經靈修助手，請完成以下任務：
 
 1. 根據條件（${context}）挑選一段合適的聖經經文（繁體中文和合本）
 2. 以慈愛天父的口吻，用第一人稱「我」，寫一段 80～100 字的靈性鼓勵話語
 
 請只輸出以下 JSON 格式，不要任何其他文字：
 {"verse":"經文內容","reference":"書卷名 章:節","message":"天父的話"}`;
+    }
 
     const res = await fetch(GROQ_API, {
         method: 'POST',
