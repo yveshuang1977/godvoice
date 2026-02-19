@@ -761,37 +761,13 @@ function setMode(m) {
 }
 
 // ═══════════════════════════════════════
-//  書卷編號對照表（bolls.life 用 1-66）
+//  STEP 1 — Groq 選出經文參考
 // ═══════════════════════════════════════
-const BOOK_NUM = {
-    genesis:1, exodus:2, leviticus:3, numbers:4, deuteronomy:5,
-    joshua:6, judges:7, ruth:8, '1samuel':9, '2samuel':10,
-    '1kings':11, '2kings':12, '1chronicles':13, '2chronicles':14,
-    ezra:15, nehemiah:16, esther:17, job:18, psalms:19, proverbs:20,
-    ecclesiastes:21, 'songofsolomon':22, isaiah:23, jeremiah:24,
-    lamentations:25, ezekiel:26, daniel:27, hosea:28, joel:29,
-    amos:30, obadiah:31, jonah:32, micah:33, nahum:34, habakkuk:35,
-    zephaniah:36, haggai:37, zechariah:38, malachi:39,
-    matthew:40, mark:41, luke:42, john:43, acts:44,
-    romans:45, '1corinthians':46, '2corinthians':47, galatians:48,
-    ephesians:49, philippians:50, colossians:51,
-    '1thessalonians':52, '2thessalonians':53,
-    '1timothy':54, '2timothy':55, titus:56, philemon:57,
-    hebrews:58, james:59, '1peter':60, '2peter':61,
-    '1john':62, '2john':63, '3john':64, jude:65, revelation:66,
-};
-
-// ═══════════════════════════════════════
-//  GROQ — 只請 AI 給書卷編號+章+節 + 天父的話
-// ═══════════════════════════════════════
-async function callGroq(theme, book) {
+async function callGroqRef(theme, book) {
     const key = groqKey;
     if (!key) return null;
 
-    // 提供書卷編號清單給 AI 參考
-    const bookList = `創世記=1,出埃及記=2,利未記=3,民數記=4,申命記=5,約書亞記=6,士師記=7,路得記=8,撒母耳記上=9,撒母耳記下=10,列王紀上=11,列王紀下=12,歷代志上=13,歷代志下=14,以斯拉記=15,尼希米記=16,以斯帖記=17,約伯記=18,詩篇=19,箴言=20,傳道書=21,雅歌=22,以賽亞書=23,耶利米書=24,耶利米哀歌=25,以西結書=26,但以理書=27,何西阿書=28,約珥書=29,阿摩司書=30,俄巴底亞書=31,約拿書=32,彌迦書=33,那鴻書=34,哈巴谷書=35,西番雅書=36,哈該書=37,撒迦利亞書=38,瑪拉基書=39,馬太福音=40,馬可福音=41,路加福音=42,約翰福音=43,使徒行傳=44,羅馬書=45,哥林多前書=46,哥林多後書=47,加拉太書=48,以弗所書=49,腓立比書=50,歌羅西書=51,帖撒羅尼迦前書=52,帖撒羅尼迦後書=53,提摩太前書=54,提摩太後書=55,提多書=56,腓利門書=57,希伯來書=58,雅各書=59,彼得前書=60,彼得後書=61,約翰一書=62,約翰二書=63,約翰三書=64,猶大書=65,啟示錄=66`;
-
-    const jsonExample = '{"book_num":43,"chapter":3,"verse":16,"reference":"約翰福音 3:16","message":"天父的話內容"}';
+    const jsonExample = '{"book":"約翰福音","chapter":3,"verse":16,"reference":"約翰福音 3:16","message":"天父的話內容"}';
 
     let userPrompt;
     if (mode === 'mood') {
@@ -799,11 +775,9 @@ async function callGroq(theme, book) {
         const moodHint = mood || '沒有特別說明心情';
         userPrompt = `使用者的心情是：「${moodHint}」
 
-請挑選一節最能安慰或鼓勵使用者的聖經經文，並以天父口吻用「我」寫 80～100 字的鼓勵話語。
+請挑選一節最能安慰或鼓勵使用者的聖經經文（必須是真實存在的章節），並以天父口吻用「我」寫 80～100 字的鼓勵話語。
 
-書卷編號對照：${bookList}
-
-只輸出 JSON（book_num 為整數，chapter 為整數，verse 為整數）：${jsonExample}`;
+只輸出 JSON：${jsonExample}`;
     } else {
         const themeHint = theme ? `主題：「${theme}」` : '';
         const bookHint  = book  ? `偏好書卷：${BOOK_ZH[book] || book}` : '';
@@ -813,68 +787,66 @@ async function callGroq(theme, book) {
         const context = [dateHint, themeHint, bookHint].filter(Boolean).join('，') || '隨機挑選';
         userPrompt = `條件：${context}
 
-請挑選一節合適的聖經經文，並以天父口吻用「我」寫 80～100 字的鼓勵話語。
+請挑選一節合適的聖經經文（必須是真實存在的章節），並以天父口吻用「我」寫 80～100 字的鼓勵話語。
 
-書卷編號對照：${bookList}
-
-只輸出 JSON（book_num 為整數，chapter 為整數，verse 為整數）：${jsonExample}`;
+只輸出 JSON：${jsonExample}`;
     }
 
     const res = await fetch(GROQ_API, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
         body: JSON.stringify({
             model: GROQ_MODEL,
-            max_tokens: 400,
-            temperature: 0.88,
+            max_tokens: 300,
+            temperature: 0.8,
             response_format: { type: 'json_object' },
             messages: [
-                { role: 'system', content: '你是聖經靈修助手。只輸出 JSON，不加任何說明或 markdown。book_num、chapter、verse 必須都是整數。' },
+                { role: 'system', content: '你是聖經靈修助手。只輸出 JSON。book 是繁體中文書卷名，chapter 和 verse 是整數，必須是真實存在的章節。' },
                 { role: 'user',   content: userPrompt },
             ],
         }),
     });
-
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Groq ${res.status}: ${err}`);
-    }
-
+    if (!res.ok) throw new Error(`Groq ${res.status}`);
     const data = await res.json();
-    const raw  = data.choices?.[0]?.message?.content || '';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
+    const raw = data.choices?.[0]?.message?.content || '';
+    return JSON.parse(raw.replace(/```json|```/g, '').trim());
 }
 
 // ═══════════════════════════════════════
-//  BIBLE API — bolls.life CUV 和合本
+//  STEP 2 — Groq 照章節輸出和合本原文
 // ═══════════════════════════════════════
-async function fetchBibleVerse(bookNum, chapter, verse) {
-    const url = `https://bolls.life/get-text/CUV/${bookNum}/${chapter}/${verse}/`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`BibleAPI ${res.status}`);
+async function callGroqVerse(book, chapter, verse) {
+    const key = groqKey;
+    const res = await fetch(GROQ_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+            model: GROQ_MODEL,
+            max_tokens: 200,
+            temperature: 0,   // 設 0，要求精確不亂改
+            response_format: { type: 'json_object' },
+            messages: [
+                { role: 'system', content: '你是聖經和合本專家。使用者給你書卷名、章、節，你只輸出該節的繁體中文和合本原文，不可增減或改寫任何字。只輸出 JSON：{"text":"原文內容"}' },
+                { role: 'user',   content: `請給我${book}第${chapter}章第${verse}節的繁體中文和合本原文。只輸出 JSON：{"text":"原文"}` },
+            ],
+        }),
+    });
+    if (!res.ok) throw new Error(`Groq ${res.status}`);
     const data = await res.json();
-    // bolls.life 回傳 { text: "..." }，text 可能含 HTML tag
-    const text = (data.text || '').replace(/<[^>]+>/g, '').trim();
-    if (!text) throw new Error('empty verse');
-    return text;
+    const raw = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (!parsed.text) throw new Error('empty verse');
+    return parsed.text.trim();
 }
 
 // ═══════════════════════════════════════
-//  單次嘗試：Groq → bolls.life 驗證
+//  單次嘗試：兩步驟 Groq
 // ═══════════════════════════════════════
 async function fetchVerseOnce() {
-    const result = await callGroq(selTheme, selBook);
-    if (!result) throw new Error('no-key');
-    const bookNum = result.book_num;
-    const chapter = result.chapter;
-    const verse   = result.verse;
-    if (!bookNum || !chapter || !verse) throw new Error('BibleAPI invalid ref');
-    const verseText = await fetchBibleVerse(bookNum, chapter, verse);
-    return { text: verseText, reference: result.reference, message: result.message };
+    const ref = await callGroqRef(selTheme, selBook);
+    if (!ref) throw new Error('no-key');
+    const verseText = await callGroqVerse(ref.book, ref.chapter, ref.verse);
+    return { text: verseText, reference: ref.reference, message: ref.message };
 }
 
 
@@ -900,7 +872,7 @@ async function fetchVerse() {
         current = result;
         render(current);
     } catch (err) {
-        console.error('[天父的話]', err);
+        console.error('[天父的話] 錯誤詳情:', err.message, err);
         const msg = err.message || '';
         let toast;
         if (msg === 'no-key')
@@ -909,8 +881,12 @@ async function fetchVerse() {
             toast = 'API Key 無效，請點右上角⚙️更新';
         else if (msg.includes('429'))
             toast = '請求太頻繁，請稍後再試 🙏';
+        else if (msg.includes('BibleAPI') || msg.includes('empty'))
+            toast = '聖經 API 查詢失敗，請再試一次 🙏';
+        else if (msg.includes('Groq'))
+            toast = 'Groq 連線失敗，請確認 API Key 🙏';
         else
-            toast = '連線失敗，請確認網路後重試 🙏';
+            toast = `連線失敗：${msg.slice(0, 40)}`;
         showToast(toast, 'err');
         if (!current) {
             render({
