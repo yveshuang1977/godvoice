@@ -761,51 +761,49 @@ function setMode(m) {
 }
 
 // ═══════════════════════════════════════
-//  BIBLE API — 取得真實經文（和合本 CUV）
+//  書卷編號對照表（bolls.life 用 1-66）
 // ═══════════════════════════════════════
-async function fetchBibleVerse(apiRef) {
-    const url = `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=cuv`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`BibleAPI ${res.status}`);
-    const data = await res.json();
-    if (!data.text || data.text.trim() === '') throw new Error('empty verse');
-    return data.text.trim().replace(/\n/g, '');
-}
+const BOOK_NUM = {
+    genesis:1, exodus:2, leviticus:3, numbers:4, deuteronomy:5,
+    joshua:6, judges:7, ruth:8, '1samuel':9, '2samuel':10,
+    '1kings':11, '2kings':12, '1chronicles':13, '2chronicles':14,
+    ezra:15, nehemiah:16, esther:17, job:18, psalms:19, proverbs:20,
+    ecclesiastes:21, 'songofsolomon':22, isaiah:23, jeremiah:24,
+    lamentations:25, ezekiel:26, daniel:27, hosea:28, joel:29,
+    amos:30, obadiah:31, jonah:32, micah:33, nahum:34, habakkuk:35,
+    zephaniah:36, haggai:37, zechariah:38, malachi:39,
+    matthew:40, mark:41, luke:42, john:43, acts:44,
+    romans:45, '1corinthians':46, '2corinthians':47, galatians:48,
+    ephesians:49, philippians:50, colossians:51,
+    '1thessalonians':52, '2thessalonians':53,
+    '1timothy':54, '2timothy':55, titus:56, philemon:57,
+    hebrews:58, james:59, '1peter':60, '2peter':61,
+    '1john':62, '2john':63, '3john':64, jude:65, revelation:66,
+};
 
 // ═══════════════════════════════════════
-//  單次嘗試：Groq 給參考 → Bible API 驗證
-// ═══════════════════════════════════════
-async function fetchVerseOnce() {
-    const result = await callGroq(selTheme, selBook);
-    if (!result) throw new Error('no-key');
-    const verseText = await fetchBibleVerse(result.api_ref);
-    return { text: verseText, reference: result.reference, message: result.message };
-}
-
-// ═══════════════════════════════════════
-//  GROQ — 只請 AI 給參考編號 + 天父的話
+//  GROQ — 只請 AI 給書卷編號+章+節 + 天父的話
 // ═══════════════════════════════════════
 async function callGroq(theme, book) {
     const key = groqKey;
     if (!key) return null;
 
-    let prompt;
-    const jsonExample = '{"api_ref":"john 3:16","reference":"約翰福音 3:16","message":"天父的話內容"}';
+    // 提供書卷編號清單給 AI 參考
+    const bookList = `創世記=1,出埃及記=2,利未記=3,民數記=4,申命記=5,約書亞記=6,士師記=7,路得記=8,撒母耳記上=9,撒母耳記下=10,列王紀上=11,列王紀下=12,歷代志上=13,歷代志下=14,以斯拉記=15,尼希米記=16,以斯帖記=17,約伯記=18,詩篇=19,箴言=20,傳道書=21,雅歌=22,以賽亞書=23,耶利米書=24,耶利米哀歌=25,以西結書=26,但以理書=27,何西阿書=28,約珥書=29,阿摩司書=30,俄巴底亞書=31,約拿書=32,彌迦書=33,那鴻書=34,哈巴谷書=35,西番雅書=36,哈該書=37,撒迦利亞書=38,瑪拉基書=39,馬太福音=40,馬可福音=41,路加福音=42,約翰福音=43,使徒行傳=44,羅馬書=45,哥林多前書=46,哥林多後書=47,加拉太書=48,以弗所書=49,腓立比書=50,歌羅西書=51,帖撒羅尼迦前書=52,帖撒羅尼迦後書=53,提摩太前書=54,提摩太後書=55,提多書=56,腓利門書=57,希伯來書=58,雅各書=59,彼得前書=60,彼得後書=61,約翰一書=62,約翰二書=63,約翰三書=64,猶大書=65,啟示錄=66`;
 
+    const jsonExample = '{"book_num":43,"chapter":3,"verse":16,"reference":"約翰福音 3:16","message":"天父的話內容"}';
+
+    let userPrompt;
     if (mode === 'mood') {
         const mood = document.getElementById('moodInput').value.trim();
         const moodHint = mood || '沒有特別說明心情';
-        prompt = `你是一個聖經靈修助手。
+        userPrompt = `使用者的心情是：「${moodHint}」
 
-使用者的心情是：「${moodHint}」
+請挑選一節最能安慰或鼓勵使用者的聖經經文，並以天父口吻用「我」寫 80～100 字的鼓勵話語。
 
-請：
-1. 挑選一節最能安慰或鼓勵使用者的聖經經文
-2. 提供該節的英文書卷名+章:節（給 Bible API 查詢用，例如：john 3:16、psalms 23:1、romans 8:28）
-3. 提供繁體中文書卷名+章:節（顯示用）
-4. 以天父口吻用「我」寫 80～100 字的鼓勵話語
+書卷編號對照：${bookList}
 
-只輸出 JSON：${jsonExample}`;
+只輸出 JSON（book_num 為整數，chapter 為整數，verse 為整數）：${jsonExample}`;
     } else {
         const themeHint = theme ? `主題：「${theme}」` : '';
         const bookHint  = book  ? `偏好書卷：${BOOK_ZH[book] || book}` : '';
@@ -813,18 +811,13 @@ async function callGroq(theme, book) {
             ? `今天日期：${new Date().toLocaleDateString('zh-TW')}（請根據日期固定挑選同一節）`
             : '';
         const context = [dateHint, themeHint, bookHint].filter(Boolean).join('，') || '隨機挑選';
+        userPrompt = `條件：${context}
 
-        prompt = `你是一個聖經靈修助手。
+請挑選一節合適的聖經經文，並以天父口吻用「我」寫 80～100 字的鼓勵話語。
 
-條件：${context}
+書卷編號對照：${bookList}
 
-請：
-1. 挑選一節合適的聖經經文
-2. 提供該節的英文書卷名+章:節（給 Bible API 查詢用，例如：john 3:16、psalms 23:1、romans 8:28）
-3. 提供繁體中文書卷名+章:節（顯示用）
-4. 以天父口吻用「我」寫 80～100 字的鼓勵話語
-
-只輸出 JSON：${jsonExample}`;
+只輸出 JSON（book_num 為整數，chapter 為整數，verse 為整數）：${jsonExample}`;
     }
 
     const res = await fetch(GROQ_API, {
@@ -839,8 +832,8 @@ async function callGroq(theme, book) {
             temperature: 0.88,
             response_format: { type: 'json_object' },
             messages: [
-                { role: 'system', content: '你是聖經靈修助手。只輸出 JSON，不加任何說明或 markdown。api_ref 必須是標準英文書卷名加章節，例如 "john 3:16"。' },
-                { role: 'user',   content: prompt },
+                { role: 'system', content: '你是聖經靈修助手。只輸出 JSON，不加任何說明或 markdown。book_num、chapter、verse 必須都是整數。' },
+                { role: 'user',   content: userPrompt },
             ],
         }),
     });
@@ -857,26 +850,33 @@ async function callGroq(theme, book) {
 }
 
 // ═══════════════════════════════════════
-//  BIBLE API — 取得真實經文（和合本 CUV）
+//  BIBLE API — bolls.life CUV 和合本
 // ═══════════════════════════════════════
-async function fetchBibleVerse(apiRef) {
-    const url = `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=cuv`;
+async function fetchBibleVerse(bookNum, chapter, verse) {
+    const url = `https://bolls.life/get-text/CUV/${bookNum}/${chapter}/${verse}/`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`BibleAPI ${res.status}`);
     const data = await res.json();
-    if (!data.text || data.text.trim() === '') throw new Error('empty verse');
-    return data.text.trim().replace(/\n/g, '');
+    // bolls.life 回傳 { text: "..." }，text 可能含 HTML tag
+    const text = (data.text || '').replace(/<[^>]+>/g, '').trim();
+    if (!text) throw new Error('empty verse');
+    return text;
 }
 
 // ═══════════════════════════════════════
-//  單次完整嘗試：Groq → Bible API 驗證
+//  單次嘗試：Groq → bolls.life 驗證
 // ═══════════════════════════════════════
 async function fetchVerseOnce() {
     const result = await callGroq(selTheme, selBook);
     if (!result) throw new Error('no-key');
-    const verseText = await fetchBibleVerse(result.api_ref);
+    const bookNum = result.book_num;
+    const chapter = result.chapter;
+    const verse   = result.verse;
+    if (!bookNum || !chapter || !verse) throw new Error('BibleAPI invalid ref');
+    const verseText = await fetchBibleVerse(bookNum, chapter, verse);
     return { text: verseText, reference: result.reference, message: result.message };
 }
+
 
 // ═══════════════════════════════════════
 //  MAIN FETCH（Bible API 失敗時自動重試一次）
