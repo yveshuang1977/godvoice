@@ -319,7 +319,7 @@
             border-radius: 16px; padding: 13px 15px;
         }
         .mood-label { font-size: 10px; color: var(--gold); letter-spacing: 0.15em; opacity: 0.65; margin-bottom: 8px; }
-        .mood-row { display: flex; gap: 8px; }
+        .mood-row { display: flex; gap: 8px; align-items: flex-start; }
         .mood-input {
             flex: 1;
             background: rgba(255,255,255,0.05);
@@ -332,6 +332,18 @@
         }
         .mood-input::placeholder { color: rgba(240,232,213,0.25); }
         .mood-input:focus { border-color: rgba(201,169,110,0.6); }
+        .mood-send {
+            padding: 9px 14px; border-radius: 10px;
+            border: 1px solid rgba(201,169,110,0.35);
+            background: rgba(201,169,110,0.14);
+            color: var(--gold-light); font-size: 11px;
+            cursor: pointer; font-family: var(--font-body);
+            letter-spacing: 0.08em; white-space: nowrap;
+            transition: all 0.2s; flex-shrink: 0;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .mood-send:hover { background: rgba(201,169,110,0.26); border-color: var(--gold); }
+        .mood-send:active { transform: scale(0.96); }
         .mood-hint { font-size: 10px; color: var(--muted); opacity: 0.5; margin-top: 6px; letter-spacing: 0.04em; }
 
         /* Key settings panel */
@@ -539,7 +551,14 @@
                 <div class="mood-row">
                     <textarea class="mood-input" id="moodInput" rows="2"
                         placeholder="告訴天父你現在的感受…例如：我今天很焦慮，工作壓力很大"
-                        maxlength="100"></textarea>
+                        maxlength="100"
+                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();fetchVerse();}"></textarea>
+                    <button class="mood-send" onclick="fetchVerse()">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        送出
+                    </button>
                 </div>
                 <p class="mood-hint">天父會根據你的心情，為你尋找最合適的話語</p>
             </div>
@@ -742,26 +761,51 @@ function setMode(m) {
 }
 
 // ═══════════════════════════════════════
-//  GROQ — 一次生成經文 + 天父的話
+//  BIBLE API — 取得真實經文（和合本 CUV）
+// ═══════════════════════════════════════
+async function fetchBibleVerse(apiRef) {
+    const url = `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=cuv`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`BibleAPI ${res.status}`);
+    const data = await res.json();
+    if (!data.text || data.text.trim() === '') throw new Error('empty verse');
+    return data.text.trim().replace(/\n/g, '');
+}
+
+// ═══════════════════════════════════════
+//  單次嘗試：Groq 給參考 → Bible API 驗證
+// ═══════════════════════════════════════
+async function fetchVerseOnce() {
+    const result = await callGroq(selTheme, selBook);
+    if (!result) throw new Error('no-key');
+    const verseText = await fetchBibleVerse(result.api_ref);
+    return { text: verseText, reference: result.reference, message: result.message };
+}
+
+// ═══════════════════════════════════════
+//  GROQ — 只請 AI 給參考編號 + 天父的話
 // ═══════════════════════════════════════
 async function callGroq(theme, book) {
     const key = groqKey;
     if (!key) return null;
 
     let prompt;
+    const jsonExample = '{"api_ref":"john 3:16","reference":"約翰福音 3:16","message":"天父的話內容"}';
 
     if (mode === 'mood') {
         const mood = document.getElementById('moodInput').value.trim();
         const moodHint = mood || '沒有特別說明心情';
-        prompt = `你是一個聖經靈修助手，請完成以下任務：
+        prompt = `你是一個聖經靈修助手。
 
 使用者的心情是：「${moodHint}」
 
-1. 根據使用者的心情，挑選一段最能安慰、鼓勵或引導他的聖經經文（繁體中文和合本）
-2. 以慈愛天父的口吻，用第一人稱「我」，針對使用者的心情，寫一段 80～100 字的靈性鼓勵話語
+請：
+1. 挑選一節最能安慰或鼓勵使用者的聖經經文
+2. 提供該節的英文書卷名+章:節（給 Bible API 查詢用，例如：john 3:16、psalms 23:1、romans 8:28）
+3. 提供繁體中文書卷名+章:節（顯示用）
+4. 以天父口吻用「我」寫 80～100 字的鼓勵話語
 
-請只輸出以下 JSON 格式，不要任何其他文字：
-{"verse":"經文內容","reference":"書卷名 章:節","message":"天父的話"}`;
+只輸出 JSON：${jsonExample}`;
     } else {
         const themeHint = theme ? `主題：「${theme}」` : '';
         const bookHint  = book  ? `偏好書卷：${BOOK_ZH[book] || book}` : '';
@@ -770,13 +814,17 @@ async function callGroq(theme, book) {
             : '';
         const context = [dateHint, themeHint, bookHint].filter(Boolean).join('，') || '隨機挑選';
 
-        prompt = `你是一個聖經靈修助手，請完成以下任務：
+        prompt = `你是一個聖經靈修助手。
 
-1. 根據條件（${context}）挑選一段合適的聖經經文（繁體中文和合本）
-2. 以慈愛天父的口吻，用第一人稱「我」，寫一段 80～100 字的靈性鼓勵話語
+條件：${context}
 
-請只輸出以下 JSON 格式，不要任何其他文字：
-{"verse":"經文內容","reference":"書卷名 章:節","message":"天父的話"}`;
+請：
+1. 挑選一節合適的聖經經文
+2. 提供該節的英文書卷名+章:節（給 Bible API 查詢用，例如：john 3:16、psalms 23:1、romans 8:28）
+3. 提供繁體中文書卷名+章:節（顯示用）
+4. 以天父口吻用「我」寫 80～100 字的鼓勵話語
+
+只輸出 JSON：${jsonExample}`;
     }
 
     const res = await fetch(GROQ_API, {
@@ -787,11 +835,11 @@ async function callGroq(theme, book) {
         },
         body: JSON.stringify({
             model: GROQ_MODEL,
-            max_tokens: 512,
+            max_tokens: 400,
             temperature: 0.88,
             response_format: { type: 'json_object' },
             messages: [
-                { role: 'system', content: '你是聖經靈修助手，只輸出 JSON，不加任何說明或 markdown。' },
+                { role: 'system', content: '你是聖經靈修助手。只輸出 JSON，不加任何說明或 markdown。api_ref 必須是標準英文書卷名加章節，例如 "john 3:16"。' },
                 { role: 'user',   content: prompt },
             ],
         }),
@@ -809,15 +857,47 @@ async function callGroq(theme, book) {
 }
 
 // ═══════════════════════════════════════
-//  MAIN FETCH
+//  BIBLE API — 取得真實經文（和合本 CUV）
+// ═══════════════════════════════════════
+async function fetchBibleVerse(apiRef) {
+    const url = `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=cuv`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`BibleAPI ${res.status}`);
+    const data = await res.json();
+    if (!data.text || data.text.trim() === '') throw new Error('empty verse');
+    return data.text.trim().replace(/\n/g, '');
+}
+
+// ═══════════════════════════════════════
+//  單次完整嘗試：Groq → Bible API 驗證
+// ═══════════════════════════════════════
+async function fetchVerseOnce() {
+    const result = await callGroq(selTheme, selBook);
+    if (!result) throw new Error('no-key');
+    const verseText = await fetchBibleVerse(result.api_ref);
+    return { text: verseText, reference: result.reference, message: result.message };
+}
+
+// ═══════════════════════════════════════
+//  MAIN FETCH（Bible API 失敗時自動重試一次）
 // ═══════════════════════════════════════
 async function fetchVerse() {
     if (loading) return;
     loading = true; setLoadingUI(true);
     try {
-        const result = await callGroq(selTheme, selBook);
-        if (!result) throw new Error('no-key');
-        current = { text: result.verse, reference: result.reference, message: result.message };
+        let result;
+        try {
+            result = await fetchVerseOnce();
+        } catch (firstErr) {
+            // 若是 BibleAPI 找不到，自動重試一次
+            if (firstErr.message.includes('BibleAPI') || firstErr.message.includes('empty')) {
+                console.warn('[天父的話] Bible API 找不到經文，重試中…', firstErr.message);
+                result = await fetchVerseOnce();
+            } else {
+                throw firstErr;
+            }
+        }
+        current = result;
         render(current);
     } catch (err) {
         console.error('[天父的話]', err);
